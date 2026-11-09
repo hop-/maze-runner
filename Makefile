@@ -20,14 +20,16 @@ TEMPLATES_URL := https://github.com/godotengine/godot/releases/download/$(RELEAS
 OUT_DIR     := build/$(BUILD)
 LINUX_BIN   := $(OUT_DIR)/linux/$(NAME)
 WINDOWS_BIN := $(OUT_DIR)/windows/$(NAME).exe
+MACOS_BIN   := $(OUT_DIR)/macos/$(NAME).zip
 LINUX_PKG   := $(OUT_DIR)/$(NAME)-linux-x86_64.tar.gz
 WINDOWS_PKG := $(OUT_DIR)/$(NAME)-windows-x86_64.zip
+MACOS_PKG   := $(OUT_DIR)/$(NAME)-macos-universal.zip
 
 # Everything that ends up in the game; a change re-exports.
 SOURCES := project.godot export_presets.cfg icon.svg $(shell find scenes scripts -type f 2>/dev/null)
 IMPORT_STAMP := .godot/.make-imported
 
-.PHONY: help run edit test linux windows all dist templates check-templates clean distclean
+.PHONY: help run edit test linux windows macos all dist templates check-templates clean distclean
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[1m%-16s\033[0m %s\n", $$1, $$2}'
@@ -46,9 +48,11 @@ linux: $(LINUX_BIN) ## Export the Linux x86_64 build
 
 windows: $(WINDOWS_BIN) ## Export the Windows x86_64 build
 
-all: linux windows ## Export every target
+macos: $(MACOS_BIN) ## Export the macOS universal build (.app in a .zip, ad-hoc signed)
 
-dist: $(LINUX_PKG) $(WINDOWS_PKG) ## Export and package archives to share
+all: linux windows macos ## Export every target
+
+dist: $(LINUX_PKG) $(WINDOWS_PKG) $(MACOS_PKG) ## Export and package archives to share
 
 templates: ## Download and install export templates for this Godot version (~1 GB)
 	@test -n "$(GODOT_VERSION)" || { echo "error: '$(GODOT)' not found" >&2; exit 1; }
@@ -88,8 +92,17 @@ $(WINDOWS_BIN): $(SOURCES) | check-templates
 	@mkdir -p $(@D)
 	$(GODOT) --headless --path . --export-$(BUILD) "Windows" $@
 
+# Godot zips the .app itself; macOS can't be exported as a bare .app bundle
+# without losing permissions, and .dmg images can only be made on a Mac.
+$(MACOS_BIN): $(SOURCES) | check-templates
+	@mkdir -p $(@D)
+	$(GODOT) --headless --path . --export-$(BUILD) "macOS" $@
+
 $(LINUX_PKG): $(LINUX_BIN)
 	tar -czf $@ -C $(<D) $(<F)
 
 $(WINDOWS_PKG): $(WINDOWS_BIN)
 	cd $(<D) && zip -q -9 $(abspath $@) $(<F)
+
+$(MACOS_PKG): $(MACOS_BIN)
+	cp $< $@

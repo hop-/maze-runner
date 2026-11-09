@@ -1,15 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 9 9" shape-rendering="crispEdges">
-  <rect width="9" height="9" fill="#f6eaa6"/>
-  <g transform="translate(1 1)">
-    <rect width="7" height="7" fill="#1b6b2a"/>
-    <rect x="1" y="1" width="5" height="5" fill="#4cc24c"/>
-    <rect x="1" y="1" width="2" height="1" fill="#9ae87f"/>
-    <rect x="1" y="2" width="1" height="1" fill="#fcfcfc"/>
-    <rect x="2" y="2" width="1" height="1" fill="#101010"/>
-    <rect x="4" y="2" width="1" height="1" fill="#fcfcfc"/>
-    <rect x="5" y="2" width="1" height="1" fill="#101010"/>
-    <rect x="1" y="4" width="1" height="1" fill="#101010"/>
-    <rect x="5" y="4" width="1" height="1" fill="#101010"/>
-    <rect x="2" y="5" width="3" height="1" fill="#101010"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- FFI at 2x on a 16-unit grid: every icon size (16..1024 px) is a whole multiple, so edges stay pixel-sharp. -->
+  <rect width="16" height="16" fill="#f6eaa6"/>
+  <rect x="1" y="1" width="14" height="2" fill="#1b6b2a"/>
+  <rect x="1" y="3" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="3" y="3" width="4" height="2" fill="#9ae87f"/>
+  <rect x="7" y="3" width="6" height="2" fill="#4cc24c"/>
+  <rect x="13" y="3" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="1" y="5" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="3" y="5" width="2" height="2" fill="#fcfcfc"/>
+  <rect x="5" y="5" width="2" height="2" fill="#101010"/>
+  <rect x="7" y="5" width="2" height="2" fill="#4cc24c"/>
+  <rect x="9" y="5" width="2" height="2" fill="#fcfcfc"/>
+  <rect x="11" y="5" width="2" height="2" fill="#101010"/>
+  <rect x="13" y="5" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="1" y="7" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="3" y="7" width="10" height="2" fill="#4cc24c"/>
+  <rect x="13" y="7" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="1" y="9" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="3" y="9" width="2" height="2" fill="#101010"/>
+  <rect x="5" y="9" width="6" height="2" fill="#4cc24c"/>
+  <rect x="11" y="9" width="2" height="2" fill="#101010"/>
+  <rect x="13" y="9" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="1" y="11" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="3" y="11" width="2" height="2" fill="#4cc24c"/>
+  <rect x="5" y="11" width="6" height="2" fill="#101010"/>
+  <rect x="11" y="11" width="2" height="2" fill="#4cc24c"/>
+  <rect x="13" y="11" width="2" height="2" fill="#1b6b2a"/>
+  <rect x="1" y="13" width="14" height="2" fill="#1b6b2a"/>
 </svg>

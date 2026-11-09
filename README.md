@@ -78,15 +78,16 @@ two characters:
 - Relative paths are resolved from the folder you ran the command in.
 - Best times are not saved for maze files.
 
-## Building (Linux / Windows)
+## Building (Linux / Windows / macOS)
 
 Builds are driven by the `Makefile` and the presets in `export_presets.cfg`.
-Each target becomes a single file with the game data embedded. Windows builds
-are made on Linux; Windows itself isn't needed.
+All three platforms build on Linux; Windows and macOS themselves aren't needed.
+Linux and Windows each produce a single file with the game data embedded.
 
 ```bash
 make templates        # once per Godot version: download export templates (~1 GB)
-make all              # build/release/linux/maze-runner + build/release/windows/maze-runner.exe
+make all              # build/release/{linux/maze-runner, windows/maze-runner.exe, macos/maze-runner.zip}
+make linux            # or one platform: linux | windows | macos
 make dist             # also make .tar.gz / .zip archives to share
 make all BUILD=debug  # debug builds (console + error output) in build/debug/
 make help             # every target
@@ -95,6 +96,15 @@ make help             # every target
 The export templates must match `godot --version` exactly. You can also install
 them from the editor: **Editor → Manage Export Templates**. Set `GODOT=/path/to/godot`
 to use a different Godot binary.
+
+**macOS notes.** The build is a `.zip` containing `Maze Runner.app`, a universal
+binary for both Intel and Apple Silicon Macs. It has a basic (ad-hoc) signature
+from Godot and is not notarized, because that needs a paid Apple Developer ID.
+Gatekeeper blocks it the first time it's opened after being downloaded. Players
+can allow it in **System Settings → Privacy & Security → Open Anyway**, or run
+`xattr -dr com.apple.quarantine "Maze Runner.app"`. `.dmg` images can only be made
+on a Mac. The bundle ID is `io.github.hop-.maze-runner`; change it in
+`export_presets.cfg`.
 
 ## Tests
 
@@ -110,7 +120,8 @@ deterministic, that each mode fits its screen, and that every font glyph is 5×7
 
 ```
 Makefile             run / test / export / package targets
-export_presets.cfg   Linux + Windows export presets (single-file, x86_64)
+export_presets.cfg   Linux, Windows (x86_64) and macOS (universal) export presets
+icon.svg             app icon: FFI on a 16-unit grid, so the exported icons stay sharp at every size
 project.godot        320×180 viewport, integer-scaled to the window (pixel-perfect)
 scenes/main.tscn     root scene → scripts/main.gd
 scripts/
