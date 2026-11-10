@@ -7,6 +7,12 @@ moonlight yellow and the walls are dark blue.
 Everything is drawn and synthesised in code. The project has no image, font
 or audio files.
 
+## Menu
+
+**NEW GAME** starts the selected mode. **MODE** picks TODDLER, KID or GROWNUP:
+press Enter, click, or press left/right to cycle. The choice is remembered.
+**SOUND** toggles the same way. **MY MAZE** appears when a maze file is loaded.
+
 ## Modes
 
 | Mode    | Maze (cells) | Loops | Exit                  | View            | Trail |
@@ -23,15 +29,20 @@ number of moves. The best time for each mode is saved.
 
 ## Controls
 
-| Action            | Keyboard              | Gamepad   |
-|-------------------|-----------------------|-----------|
-| Move              | Arrow keys / WASD     | D-pad     |
-| Select / continue | Enter / Space         | A         |
-| New maze          | R                     | Y         |
-| Back to menu      | Esc / Backspace       | B         |
-| Sound on/off      | M                     | Back      |
+| Action            | Keyboard              | Gamepad (Xbox names)     | Touch screen              |
+|-------------------|-----------------------|--------------------------|---------------------------|
+| Move              | Arrow keys / WASD     | Left stick or d-pad      | Drag anywhere the way to go |
+| Select / continue | Enter / Space         | A or Start               | Tap                       |
+| New maze          | R                     | Y                        | Tap after a win           |
+| Back to menu      | Esc / Backspace       | B                        | Tap `<` (top left), Android back |
+| Sound on/off      | M                     | Back / View              | SOUND on the menu         |
 
 You can also use the mouse on the menu. Holding a direction keeps FFI walking.
+Other controllers (PlayStation, Switch, …) use the same button positions.
+
+The stick and touch drag go the way they're pushed most. A diagonal push also
+counts the weaker direction as a second choice, so FFI turns into a side
+corridor without precise aiming.
 
 ## Running
 
@@ -78,19 +89,23 @@ two characters:
 - Relative paths are resolved from the folder you ran the command in.
 - Best times are not saved for maze files.
 
-## Building (Linux / Windows / macOS)
+## Building
 
 Builds are driven by the `Makefile` and the presets in `export_presets.cfg`.
-All three platforms build on Linux; Windows and macOS themselves aren't needed.
-Linux and Windows each produce a single file with the game data embedded.
+Everything is built on Linux: Windows, macOS, Android and iOS themselves aren't
+needed, except a Mac for the final iOS step. Linux and Windows each produce a
+single file with the game data embedded.
 
 ```bash
-make templates        # once per Godot version: download export templates (~1 GB)
-make all              # build/release/{linux/maze-runner, windows/maze-runner.exe, macos/maze-runner.zip}
-make linux            # or one platform: linux | windows | macos
-make dist             # also make .tar.gz / .zip archives to share
-make all BUILD=debug  # debug builds (console + error output) in build/debug/
-make help             # every target
+make templates          # once per Godot version: download export templates (~1 GB)
+make desktop            # build/release/{linux/maze-runner, windows/maze-runner.exe, macos/maze-runner.zip}
+make mobile             # build/release/{android/maze-runner.apk, ios/maze-runner.xcodeproj}
+make linux              # or one platform: linux | windows | macos | android | ios
+make all                # every platform in PLATFORMS (default: all five)
+make dist               # also make archives to share, in build/release/
+make dist PLATFORMS="linux windows macos"   # only some platforms
+make all BUILD=debug    # debug builds (console + error output) in build/debug/
+make help               # every target
 ```
 
 The export templates must match `godot --version` exactly. You can also install
@@ -106,6 +121,30 @@ can allow it in **System Settings → Privacy & Security → Open Anyway**, or r
 on a Mac. The bundle ID is `io.github.hop-.maze-runner`; change it in
 `export_presets.cfg`.
 
+**Android.** One-time setup: install JDK 17 (`sudo pacman -S jdk17-openjdk` on
+Arch/Manjaro), then run `make android-setup`. It downloads the Android
+command-line tools (checksum-verified) and installs platform-tools and
+build-tools into `~/Android/Sdk`. It also creates the standard debug signing key
+and points Godot's editor settings at Java and the SDK. Close the Godot editor
+first, because it rewrites its settings file on exit.
+
+```bash
+make android BUILD=debug   # APK signed with the debug key: fine for your own phone
+make android-install       # install it over USB (USB debugging on)
+make android-keystore      # once: your own release key (keep it and its password safe)
+make android               # release APK; needs the GODOT_ANDROID_KEYSTORE_RELEASE_* variables
+```
+
+The APK runs on 32- and 64-bit ARM phones in landscape. The Play Store wants an
+AAB, which needs Godot's Gradle build; this setup makes APKs for sideloading.
+
+**iOS.** Set your 10-character Apple Team ID in `export_presets.cfg`
+(`application/app_store_team_id`); a free Apple ID's personal team works. Then
+`make ios` exports an Xcode project to `build/release/ios/`, and `make dist`
+zips it. Building, signing and installing the `.ipa` is done in Xcode on a Mac.
+The bundle ID is `io.github.hop-.maze-runner`, and Android's package name is
+`io.github.hop_.mazerunner` (Android doesn't allow hyphens).
+
 ## Tests
 
 ```bash
@@ -120,14 +159,15 @@ deterministic, that each mode fits its screen, and that every font glyph is 5×7
 
 ```
 Makefile             run / test / export / package targets
-export_presets.cfg   Linux, Windows (x86_64) and macOS (universal) export presets
+export_presets.cfg   Linux, Windows, macOS, Android and iOS export presets
 icon.svg             app icon: FFI on a 16-unit grid, so the exported icons stay sharp at every size
 project.godot        320×180 viewport, integer-scaled to the window (pixel-perfect)
 scenes/main.tscn     root scene → scripts/main.gd
 scripts/
   main.gd            swaps between menu and game; reads --maze / --mode
-  menu.gd            title screen (MenuScreen)
-  game.gd            one play session: input, clock, camera, win (GameScreen)
+  menu.gd            title screen: NEW GAME, MODE, SOUND (MenuScreen)
+  dir_input.gd       keys, d-pad, stick and touch drag → maze directions (DirInput)
+  game.gd            one play session: steering, clock, camera, win (GameScreen)
   maze.gd            maze generation, text maze files, BFS (Maze)
   modes.gd           difficulty settings (Modes)
   maze_view.gd       draws floor and walls (MazeView)
@@ -139,7 +179,7 @@ scripts/
   palette.gd         the 8-bit color palette (Palette)
   pixel_font.gd      5×7 bitmap font drawn with rectangles (PixelFont)
   sprites.gd         pixel-art sprites as character grids (Sprites)
-  settings.gd        autoload: input map, sound toggle, best times
+  settings.gd        autoload: input map, sound, chosen mode, best times
   sfx.gd             autoload: square-wave chiptune sound effects
 tests/test_maze.gd   headless test runner
 ```

@@ -25,6 +25,7 @@ func _initialize() -> void:
 	_test_text_maze_errors()
 	_test_font_wrap()
 	_test_arrow_directions()
+	_test_analog_directions()
 	print("%d checks, %d failed" % [_checks, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -195,3 +196,21 @@ func _test_arrow_directions() -> void:
 	_check(Sprites.arrow(3) == flipped.call(Sprites.ARROW_NE), "south-west is north-east turned around")
 	_check(Sprites.arrow(2)[6][3] == "K" and Sprites.arrow(2)[5][3] == "R", "south arrow tip is at the bottom")
 	_check(Sprites.arrow(-1) == Sprites.arrow(7), "octants wrap around")
+
+
+func _test_analog_directions() -> void:
+	var r := Vector2i.RIGHT
+	var cases := [
+		# [stick vector, previous main direction, expected directions]
+		[Vector2(1, 0), Vector2i.ZERO, [r]],
+		[Vector2(0.3, 0.2), Vector2i.ZERO, []],                       # inside the dead zone
+		[Vector2(0.8, 0.5), Vector2i.ZERO, [r, Vector2i.DOWN]],       # diagonal: second choice
+		[Vector2(-0.2, -0.9), Vector2i.ZERO, [Vector2i.UP]],          # weak side axis ignored
+		[Vector2(0.6, 0.68), r, [r, Vector2i.DOWN]],                  # near-diagonal keeps its axis
+		[Vector2(0.4, 0.9), r, [Vector2i.DOWN, r]],                   # clear switch to vertical
+	]
+	for c in cases:
+		var got := DirInput._analog_dirs(c[0], c[1])
+		var want: Array[Vector2i] = []
+		want.assign(c[2])
+		_check(got == want, "analog %s (was %s): want %s, got %s" % [c[0], c[1], want, got])

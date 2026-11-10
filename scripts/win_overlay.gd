@@ -8,12 +8,14 @@ const PANEL := Rect2(56, 40, 208, 104)
 var _title := ""
 var _lines: PackedStringArray = []
 var _new_best := false
+var _footer := ""
 var _time := 0.0
 var _confetti: Array[Dictionary] = []
 
 
-func open(title: String, lines: PackedStringArray, new_best: bool) -> void:
+func open(title: String, lines: PackedStringArray, new_best: bool, footer: String) -> void:
 	_title = title
+	_footer = footer
 	_lines = lines
 	_new_best = new_best
 	_time = 0.0
@@ -61,4 +63,4 @@ func _draw() -> void:
 		y += 10
 	if _new_best and fmod(_time, 0.8) < 0.55:
 		PixelFont.draw_text_centered(self, "NEW BEST TIME!", cx, y + 2, Palette.FFI)
-	PixelFont.draw_text_centered(self, "ENTER: NEW MAZE   ESC: MENU", cx, PANEL.end.y - 11, Palette.WALL_LIGHT)
+	PixelFont.draw_text_centered(self, _footer, cx, PANEL.end.y - 11, Palette.WALL_LIGHT)

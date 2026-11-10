@@ -6,6 +6,7 @@ const HEIGHT := 12
 const WIDTH := 320
 
 var mode_name := ""
+var show_back_button := false  # touch screens: "<" in the corner opens the menu
 var time_text := "0:00.0"
 var moves := 0
 
@@ -20,7 +21,8 @@ func set_values(p_time_text: String, p_moves: int) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, WIDTH, HEIGHT), Palette.NIGHT)
 	draw_rect(Rect2(0, HEIGHT - 1, WIDTH, 1), Palette.WALL)
-	PixelFont.draw_text(self, mode_name, Vector2(4, 2), Palette.FFI_LIGHT)
+	var label := ("< " + mode_name) if show_back_button else mode_name
+	PixelFont.draw_text(self, label, Vector2(4, 2), Palette.FFI_LIGHT)
 	PixelFont.draw_text_centered(self, "TIME " + time_text, WIDTH / 2.0, 2, Palette.MOON)
 	var moves_text := "MOVES %d" % moves
 	PixelFont.draw_text(self, moves_text, Vector2(WIDTH - 4 - PixelFont.text_width(moves_text), 2), Palette.MOON)

@@ -1,8 +1,11 @@
 class_name GameScreen
 extends Node2D
-## One play session in a mode: builds a maze, moves FFI with the keys, runs the
-## clock, and shows the win panel. R makes a new maze (or reloads the maze
-## file), Esc goes back to the menu.
+## One play session in a mode: builds a maze, moves FFI, runs the clock, and
+## shows the win panel. R makes a new maze (or reloads the maze file), Esc goes
+## back to the menu. Steering comes from DirInput (keys, d-pad, stick, touch).
+##
+## On touch screens: drag anywhere to steer, tap "<" in the top-left corner for
+## the menu, tap to continue after a win. Android's back button opens the menu.
 
 signal exit_to_menu(mode: int)
 signal load_failed(message: String)
@@ -10,12 +13,8 @@ signal load_failed(message: String)
 const VIEW := Vector2(320, 180)
 const CAMERA_PAD := 6
 const FILE_TILE_SIZES := [16, 9]  # largest that fits the screen wins; else 9 + scrolling
-const DIR_ACTIONS := {
-	"move_up": Vector2i.UP,
-	"move_down": Vector2i.DOWN,
-	"move_left": Vector2i.LEFT,
-	"move_right": Vector2i.RIGHT,
-}
+const BACK_BUTTON := Rect2(0, 0, 64, Hud.HEIGHT + 8)  # touch target for "<"
+const WIN_TAP_DELAY := 0.5  # ignore taps right after winning (finger still steering)
 
 var mode := Modes.TODDLER
 var maze_path := ""  # read for Modes.CUSTOM
@@ -28,8 +27,10 @@ var _elapsed := 0.0
 var _moves := 0
 var _clock_running := false
 var _won := false
-var _held: Array[Vector2i] = []     # held directions, most recent last
-var _queued := Vector2i.ZERO        # tap pressed while FFI was mid-step
+var _won_at := 0.0
+var _steering := DirInput.new()
+var _queued := Vector2i.ZERO        # pushed while FFI was mid-step
+var _touch_ui := DisplayServer.is_touchscreen_available()
 
 var _view := MazeView.new()
 var _markers := MazeMarkers.new()
@@ -57,6 +58,7 @@ func _ready() -> void:
 	hud_layer.add_child(_pointer)
 	_pointer.visible = false
 	_hud.mode_name = _cfg["name"]
+	_hud.show_back_button = _touch_ui
 
 	var win_layer := CanvasLayer.new()
 	win_layer.layer = 2
@@ -157,6 +159,9 @@ func _camera_target() -> Vector2:
 
 
 func _process(delta: float) -> void:
+	_steering.poll()
+	if not _won and _maze != null:
+		_steer()
 	if _follow_camera:
 		_camera.position = _camera_target()
 		_update_visible_tiles()
@@ -167,41 +172,66 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Always track the finger, even on the win panel, so a lift is never missed.
+	_steering.handle_touch(event)
 	if event.is_action_pressed("back"):
 		exit_to_menu.emit(mode)
 		return
+	if event is InputEventScreenTouch and event.pressed and BACK_BUTTON.has_point(event.position):
+		exit_to_menu.emit(mode)
+		return
 	if _won:
-		if event.is_action_pressed("confirm") or event.is_action_pressed("new_maze"):
+		var tapped: bool = event is InputEventScreenTouch and event.pressed \
+				and _elapsed_since_win() > WIN_TAP_DELAY
+		if tapped or event.is_action_pressed("confirm") or event.is_action_pressed("new_maze"):
 			_new_maze()
 		return
 	if event.is_action_pressed("new_maze"):
 		_new_maze()
-		return
-	for action: String in DIR_ACTIONS:
-		var dir: Vector2i = DIR_ACTIONS[action]
-		if event.is_action_pressed(action):
-			_held.erase(dir)
-			_held.append(dir)
-			_try_step(dir, true)
-		elif event.is_action_released(action):
-			_held.erase(dir)
 
 
-## Tries to move one tile. Taps during a step are queued; held keys keep FFI
-## walking. Only a fresh key press bumps (so holding into a wall stays quiet).
-func _try_step(dir: Vector2i, pressed_now: bool) -> void:
-	if _won:
-		return
-	if _player.is_moving():
-		if pressed_now:
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:  # Android back button
+		exit_to_menu.emit(mode)
+
+
+## A fresh push steps (or bumps a wall); while FFI is mid-step it is queued.
+## Anything still held keeps FFI walking, without bumping.
+func _steer() -> void:
+	for dir in _steering.pressed:
+		if _player.is_moving():
 			_queued = dir
+		else:
+			_push(dir)
+	if not _player.is_moving():
+		_walk_held()
+
+
+func _push(dir: Vector2i) -> void:
+	if _can_step(dir):
+		_step(dir)
 		return
+	var alt := _steering.alternative(dir)  # diagonal stick/drag: try the other axis
+	if alt != Vector2i.ZERO and _can_step(alt):
+		_step(alt)
+		return
+	_player.bump(dir)
+	Sfx.play("bump")
+
+
+func _walk_held() -> void:
+	for dir in _steering.wanted():
+		if _can_step(dir):
+			_step(dir)
+			return
+
+
+func _can_step(dir: Vector2i) -> bool:
+	return not _maze.is_wall(_player.tile_pos + dir)
+
+
+func _step(dir: Vector2i) -> void:
 	var target := _player.tile_pos + dir
-	if _maze.is_wall(target):
-		if pressed_now:
-			_player.bump(dir)
-			Sfx.play("bump")
-		return
 	_clock_running = true
 	_moves += 1
 	_player.step_to(target, _cfg["move_time"])
@@ -217,17 +247,18 @@ func _on_player_arrived(at: Vector2i) -> void:
 	if _queued != Vector2i.ZERO:
 		var dir := _queued
 		_queued = Vector2i.ZERO
-		_try_step(dir, true)
-		return
-	# Drop keys released while the window was unfocused, then keep walking.
-	_held = _held.filter(func(d: Vector2i) -> bool: return Input.is_action_pressed(_action_for(d)))
-	if not _held.is_empty():
-		_try_step(_held.back(), false)
+		_push(dir)
+	else:
+		_walk_held()  # no pause between tiles while a direction is held
+
+
+func _elapsed_since_win() -> float:
+	return Time.get_ticks_msec() / 1000.0 - _won_at
 
 
 func _finish() -> void:
 	_won = true
-	_held.clear()
+	_won_at = Time.get_ticks_msec() / 1000.0
 	_queued = Vector2i.ZERO
 	var mode_name: String = _cfg["name"]
 	# Best times are kept for the built-in modes only, not for maze files.
@@ -238,16 +269,11 @@ func _finish() -> void:
 	])
 	if mode != Modes.CUSTOM and not new_best:
 		lines.append("BEST " + Settings.format_time(Settings.best_time(mode_name)))
-	_win.open(_cfg["win"], lines, new_best)
+	var footer := "TAP: NEW MAZE   < : MENU" if _touch_ui else "ENTER: NEW MAZE   ESC: MENU"
+	_win.open(_cfg["win"], lines, new_best, footer)
 	Sfx.play("win")
 
 
 func _update_hud() -> void:
 	_hud.set_values(Settings.format_time(_elapsed), _moves)
 
-
-func _action_for(dir: Vector2i) -> String:
-	for action: String in DIR_ACTIONS:
-		if DIR_ACTIONS[action] == dir:
-			return action
-	return ""
